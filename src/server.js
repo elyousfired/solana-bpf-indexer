@@ -57,12 +57,13 @@ export async function handleRequest(req, res) {
       return;
     }
 
-    // API 2: BPF Catalog (Filterable by jupiter, anchor, all)
+    // API 2: BPF Catalog (Filterable by all, jupiter, raw, anchor)
     if (pathname === '/api/bpf/catalog' && req.method === 'GET') {
       const filter = reqUrl.searchParams.get('filter') || 'all';
       const search = reqUrl.searchParams.get('search') || '';
-      const limit = parseInt(reqUrl.searchParams.get('limit') || '100', 10);
-      const data = await getBpfCatalog(filter, search, limit);
+      const page = parseInt(reqUrl.searchParams.get('page') || '1', 10);
+      const limit = parseInt(reqUrl.searchParams.get('limit') || '50', 10);
+      const data = await getBpfCatalog(filter, search, page, limit);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(data));
       return;

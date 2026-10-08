@@ -337,54 +337,124 @@ export async function inspectProgramAccount(programIdStr) {
   }
 }
 
-// 4. Return Indexer Summary & Curated Commercial Directory
-export async function getBpfCatalog(filter = 'all', search = '', limit = 100) {
-  const jupiterLabels = await getJupiterProgramLabels();
-  const entries = Object.entries(jupiterLabels);
+let CACHED_MANIFEST = null;
 
-  let catalog = entries.map(([programId, label], index) => {
-    const idl = deriveAnchorIdlPda(programId);
-    return {
-      id: programId,
-      index: index + 1,
-      name: label,
-      programId,
-      owner: BPF_LOADER_UPGRADEABLE_ID,
-      isOwnedByBpfLoader: true,
-      hasJupiterLabel: true,
-      jupiterLabel: label,
-      hasAnchorIdl: ['Raydium', 'Meteora', 'Pump.fun', 'Sanctum', 'Kamino', 'ORE', 'MarginFi', 'Drift'].some(x => label.includes(x)),
-      idlPda: idl.idlPda,
-      solscanUrl: `https://solscan.io/account/${programId}`,
-      category: categorizeProtocol(label)
-    };
-  });
-
-  if (filter === 'anchor') {
-    catalog = catalog.filter(p => p.hasAnchorIdl);
+export async function getAllBpfProgramsManifest() {
+  if (CACHED_MANIFEST && CACHED_MANIFEST.programs && CACHED_MANIFEST.programs.length > 0) {
+    return CACHED_MANIFEST;
   }
 
+  // Check pre-warmed manifest in cache
+  const manifestPaths = [
+    path.join(__dirname, '..', 'cache', 'bpf_programs_manifest.json'),
+    path.join(CACHE_DIR, 'bpf_programs_manifest.json')
+  ];
+
+  for (const mPath of manifestPaths) {
+    try {
+      const content = await fs.readFile(mPath, 'utf8');
+      const data = JSON.parse(content);
+      if (data && Array.isArray(data.programs) && data.programs.length > 0) {
+        CACHED_MANIFEST = data;
+        return data;
+      }
+    } catch {}
+  }
+
+  // Live RPC fallback
+  try {
+    const res = await callSolanaRpc('getProgramAccounts', [
+      BPF_LOADER_UPGRADEABLE_ID,
+      { filters: [{ dataSize: 36 }], dataSlice: { offset: 0, length: 0 } }
+    ]);
+    if (Array.isArray(res) && res.length > 0) {
+      const programs = res.map(x => x.pubkey);
+      CACHED_MANIFEST = {
+        timestamp: Date.now(),
+        total: programs.length,
+        programs
+      };
+      return CACHED_MANIFEST;
+    }
+  } catch (err) {
+    console.warn('[BPFEngine] Live RPC manifest fetch warning:', err.message);
+  }
+
+  return { total: 0, programs: [] };
+}
+
+// 4. Return Indexer Summary & Full 75,511 On-Chain Program Directory with Pagination
+export async function getBpfCatalog(filter = 'all', search = '', page = 1, limit = 50) {
+  const manifest = await getAllBpfProgramsManifest();
+  const jupiterLabels = await getJupiterProgramLabels();
+  const allProgramIds = manifest.programs || [];
+
+  let filteredIds = allProgramIds;
+
+  // Filter
+  if (filter === 'jupiter') {
+    filteredIds = filteredIds.filter(pid => !!jupiterLabels[pid]);
+  } else if (filter === 'raw') {
+    filteredIds = filteredIds.filter(pid => !jupiterLabels[pid]);
+  } else if (filter === 'anchor') {
+    filteredIds = filteredIds.filter(pid => {
+      const lbl = jupiterLabels[pid];
+      return lbl && ['Raydium', 'Meteora', 'Pump.fun', 'Sanctum', 'Kamino', 'ORE', 'MarginFi', 'Drift'].some(x => lbl.includes(x));
+    });
+  }
+
+  // Search
   if (search) {
     const s = search.toLowerCase().trim();
-    catalog = catalog.filter(p => 
-      p.name.toLowerCase().includes(s) || 
-      p.programId.toLowerCase().includes(s) ||
-      p.category.toLowerCase().includes(s)
-    );
+    filteredIds = filteredIds.filter(pid => {
+      if (pid.toLowerCase().includes(s)) return true;
+      const lbl = jupiterLabels[pid];
+      if (lbl && lbl.toLowerCase().includes(s)) return true;
+      return false;
+    });
   }
+
+  const total = filteredIds.length;
+  const totalPages = Math.ceil(total / limit) || 1;
+  const safePage = Math.max(1, Math.min(page, totalPages));
+  const startIndex = (safePage - 1) * limit;
+  const pageIds = filteredIds.slice(startIndex, startIndex + limit);
+
+  const programs = pageIds.map((pid, idx) => {
+    const label = jupiterLabels[pid] || null;
+    const isCommercial = !!label;
+    const hasAnchorIdl = isCommercial && ['Raydium', 'Meteora', 'Pump.fun', 'Sanctum', 'Kamino', 'ORE', 'MarginFi', 'Drift'].some(x => label.includes(x));
+    const idl = deriveAnchorIdlPda(pid);
+
+    return {
+      index: startIndex + idx + 1,
+      programId: pid,
+      name: label || `BPF Program (${pid.slice(0, 6)}...${pid.slice(-6)})`,
+      isCommercial,
+      jupiterLabel: label,
+      hasAnchorIdl,
+      idlPda: idl.idlPda,
+      category: isCommercial ? categorizeProtocol(label) : 'Raw BPF Smart Contract',
+      owner: BPF_LOADER_UPGRADEABLE_ID,
+      solscanUrl: `https://solscan.io/account/${pid}`
+    };
+  });
 
   return {
     success: true,
     stats: {
-      totalHistoricalPrograms: '75,510+',
+      totalHistoricalPrograms: manifest.total || allProgramIds.length,
       bpfLoaderOwner: BPF_LOADER_UPGRADEABLE_ID,
-      jupiterCommercialProtocols: entries.length,
-      verifiedAnchorIdls: catalog.filter(x => x.hasAnchorIdl).length,
+      jupiterCommercialProtocols: Object.keys(jupiterLabels).length,
       activeLiquidityAnchors: '100% Verified'
     },
     filter,
-    total: catalog.length,
-    programs: catalog.slice(0, limit)
+    search,
+    page: safePage,
+    limit,
+    totalPages,
+    total,
+    programs
   };
 }
 

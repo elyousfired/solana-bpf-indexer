@@ -45,7 +45,7 @@
       <nav class="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800 font-mono text-xs overflow-x-auto">
         <button id="tab-catalog" onclick="switchView('catalog')" class="px-3.5 py-1.5 rounded-lg font-bold transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm flex items-center gap-1.5 shrink-0">
           <span>📋</span>
-          <span>1. Verified Catalog</span>
+          <span>1. Universal Directory (75,510+)</span>
         </button>
         <button id="tab-inspector" onclick="switchView('inspector')" class="px-3.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1.5 shrink-0">
           <span>🔍</span>
@@ -95,40 +95,94 @@
     <!-- ============================================================== -->
     <!-- VIEW 1: VERIFIED BPF CATALOG                                   -->
     <!-- ============================================================== -->
+    <!-- ============================================================== -->
+    <!-- VIEW 1: UNIVERSAL BPF SMART CONTRACT DIRECTORY (75,510+)       -->
+    <!-- ============================================================== -->
     <section id="view-catalog" class="space-y-5">
       <div class="bg-[#080d1a] border border-slate-800 rounded-2xl p-5 space-y-4">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
           <div>
             <div class="flex items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
-              <span class="text-xs font-mono font-bold uppercase text-cyan-400">BPF Upgradeable Registry</span>
+              <span class="text-xs font-mono font-bold uppercase text-cyan-400">BPF Upgradeable Registry &bull; L-KUNNACH L-KBIR</span>
             </div>
             <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2 mt-1">
-              <span>📋 Verified Commercial Smart Contracts Catalog</span>
+              <span>📋 Universal Solana Smart Contract Registry</span>
               <span id="catalog-count-badge" class="px-2.5 py-0.5 rounded-full text-xs bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">Loading...</span>
             </h2>
-            <p class="text-xs text-slate-400 mt-1">
-              Active protocols extracted from the 75,510+ BPF programs, filtered through Jupiter commercial liquidity mappings and Anchor IDL standards.
+            <p class="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
+              Every smart contract in Solana's history deployed under <code class="text-cyan-300 font-bold">BPFLoaderUpgradeab1e11111111111111111111111</code> (dataSize: 36 bytes). Browse all 75,510+ programs, Jupiter commercial protocols, and raw on-chain contracts.
             </p>
           </div>
 
           <!-- Search Input -->
           <div class="relative w-full md:w-80">
             <input 
-              id="catalog-search"
+              id="catalog-search" 
               type="text" 
               oninput="handleCatalogSearch(this.value)" 
-              placeholder="Search by Protocol Name or Program ID..." 
-              class="w-full bg-slate-950/90 border border-slate-800 focus:border-cyan-400 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 outline-none font-mono"
+              placeholder="Search 75,510+ contracts by ID or Name..." 
+              class="w-full bg-slate-950/90 border border-slate-800 focus:border-cyan-400 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none font-mono"
             />
           </div>
         </div>
 
-        <!-- Filter Pills -->
-        <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
-          <span class="text-slate-500">Filter Sieve:</span>
-          <button id="filter-all" onclick="setCatalogFilter('all')" class="px-3 py-1 rounded-lg border bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-bold transition-all">All Commercial (120+)</button>
-          <button id="filter-anchor" onclick="setCatalogFilter('anchor')" class="px-3 py-1 rounded-lg border bg-slate-900 text-slate-400 border-slate-800 hover:text-white transition-all">Anchor IDL Verified</button>
+        <!-- Filter Sieve & Page Size Bar -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs">
+          <!-- Filter Pills -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-slate-500 text-[11px]">Filter:</span>
+            <button id="filter-all" onclick="setCatalogFilter('all')" class="px-3 py-1.5 rounded-lg border bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-bold transition-all flex items-center gap-1.5">
+              <span>🌟 All Programs</span>
+              <span class="text-[10px] px-1.5 py-0.5 bg-cyan-950/80 rounded border border-cyan-500/30 text-cyan-300">75,510</span>
+            </button>
+            <button id="filter-jupiter" onclick="setCatalogFilter('jupiter')" class="px-3 py-1.5 rounded-lg border bg-slate-900 text-slate-400 border-slate-800 hover:text-white transition-all flex items-center gap-1.5">
+              <span>🟢 Jupiter Verified</span>
+              <span class="text-[10px] px-1.5 py-0.5 bg-slate-800 rounded text-emerald-300">118</span>
+            </button>
+            <button id="filter-raw" onclick="setCatalogFilter('raw')" class="px-3 py-1.5 rounded-lg border bg-slate-900 text-slate-400 border-slate-800 hover:text-white transition-all flex items-center gap-1.5">
+              <span>⚙️ Raw On-Chain</span>
+              <span class="text-[10px] px-1.5 py-0.5 bg-slate-800 rounded text-amber-300">75,392</span>
+            </button>
+            <button id="filter-anchor" onclick="setCatalogFilter('anchor')" class="px-3 py-1.5 rounded-lg border bg-slate-900 text-slate-400 border-slate-800 hover:text-white transition-all flex items-center gap-1.5">
+              <span>🔷 Anchor IDL</span>
+            </button>
+          </div>
+
+          <!-- Page size selector -->
+          <div class="flex items-center gap-2">
+            <span class="text-slate-500 text-[11px]">Per Page:</span>
+            <select id="select-limit" onchange="changeLimit(this.value)" class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-slate-300 text-xs focus:border-cyan-400 outline-none">
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Pagination Controls Top -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-2 px-3 rounded-xl bg-slate-950/80 border border-slate-800/80 font-mono text-xs">
+          <div id="pagination-info" class="text-slate-400 text-[11px]">
+            Showing 1 - 50 of 75,510 contracts
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="goToPage(1)" id="btn-first" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed">⏮ First</button>
+            <button onclick="prevPage()" id="btn-prev" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed">◀ Prev</button>
+            
+            <span class="text-slate-500 mx-1">Page</span>
+            <input 
+              id="input-page" 
+              type="number" 
+              min="1" 
+              value="1" 
+              onkeydown="if(event.key==='Enter') jumpToPage(this.value)"
+              class="w-16 bg-slate-900 border border-slate-700 text-center text-cyan-300 rounded px-1 py-1 font-bold outline-none focus:border-cyan-400"
+            />
+            <span class="text-slate-500">of <span id="span-total-pages" class="text-slate-300 font-bold">1,511</span></span>
+            
+            <button onclick="nextPage()" id="btn-next" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed">Next ▶</button>
+            <button onclick="goToPage(totalPages)" id="btn-last" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed">Last ⏭</button>
+          </div>
         </div>
 
         <!-- Catalog Table -->
@@ -136,8 +190,9 @@
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="border-b border-slate-800 bg-slate-900/80 text-[11px] text-slate-400 uppercase">
-                <th class="py-3 px-3 text-center w-12">#</th>
-                <th class="py-3 px-4">Protocol Name</th>
+                <th class="py-3 px-3 text-center w-14">#</th>
+                <th class="py-3 px-4">Protocol / Contract Name</th>
+                <th class="py-3 px-3 text-center">Type</th>
                 <th class="py-3 px-4">Category</th>
                 <th class="py-3 px-4">Solana Program ID</th>
                 <th class="py-3 px-3 text-center">Anchor IDL</th>
@@ -150,6 +205,21 @@
             </tbody>
           </table>
         </div>
+
+        <!-- Pagination Controls Bottom -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 font-mono text-xs">
+          <div id="pagination-info-bottom" class="text-slate-400 text-[11px]">
+            Showing 1 - 50 of 75,510 contracts
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="goToPage(1)" id="btn-first-b" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed">⏮ First</button>
+            <button onclick="prevPage()" id="btn-prev-b" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed">◀ Prev</button>
+            <span class="text-slate-400 px-2">Page <span id="span-current-page" class="text-cyan-300 font-bold">1</span> / <span id="span-total-pages-b">1,511</span></span>
+            <button onclick="nextPage()" id="btn-next-b" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed">Next ▶</button>
+            <button onclick="goToPage(totalPages)" id="btn-last-b" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed">Last ⏭</button>
+          </div>
+        </div>
+
       </div>
     </section>
 
@@ -374,6 +444,11 @@
     let catalogData = [];
     let activeFilter = 'all';
     let searchQuery = '';
+    let currentPage = 1;
+    let pageSize = 50;
+    let totalPages = 1;
+    let totalCount = 75510;
+    let searchDebounceTimer = null;
 
     async function initApp() {
       await loadStats();
@@ -386,6 +461,7 @@
         const res = await fetch('/api/bpf/stats');
         const json = await res.json();
         if (json.success) {
+          totalCount = json.totalHistoricalPrograms;
           document.getElementById('kpi-total-bpf').textContent = Number(json.totalHistoricalPrograms).toLocaleString() + '+';
           document.getElementById('kpi-commercial-count').textContent = `${json.jupiterVerifiedCommercialProtocols} Active`;
         }
@@ -396,11 +472,41 @@
 
     async function loadCatalog() {
       try {
-        const res = await fetch(`/api/bpf/catalog?filter=${activeFilter}&search=${encodeURIComponent(searchQuery)}`);
+        const url = `/api/bpf/catalog?filter=${activeFilter}&search=${encodeURIComponent(searchQuery)}&page=${currentPage}&limit=${pageSize}`;
+        const res = await fetch(url);
         const json = await res.json();
         if (json.success) {
           catalogData = json.programs;
-          document.getElementById('catalog-count-badge').textContent = `${json.total} Protocols`;
+          totalPages = json.totalPages || 1;
+          currentPage = json.page || 1;
+          const totalFound = json.total;
+
+          // Update badges & pagination numbers
+          document.getElementById('catalog-count-badge').textContent = `${totalFound.toLocaleString()} Programs Found`;
+          document.getElementById('span-total-pages').textContent = totalPages.toLocaleString();
+          document.getElementById('span-total-pages-b').textContent = totalPages.toLocaleString();
+          document.getElementById('span-current-page').textContent = currentPage.toLocaleString();
+          document.getElementById('input-page').value = currentPage;
+          document.getElementById('input-page').max = totalPages;
+
+          const startItem = totalFound === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+          const endItem = Math.min(currentPage * pageSize, totalFound);
+          const pageInfoText = `Showing ${startItem.toLocaleString()} - ${endItem.toLocaleString()} of ${totalFound.toLocaleString()} contracts`;
+          document.getElementById('pagination-info').textContent = pageInfoText;
+          document.getElementById('pagination-info-bottom').textContent = pageInfoText;
+
+          // Update Prev / Next button states
+          const isFirst = currentPage <= 1;
+          const isLast = currentPage >= totalPages;
+          ['btn-first', 'btn-first-b', 'btn-prev', 'btn-prev-b'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = isFirst;
+          });
+          ['btn-next', 'btn-next-b', 'btn-last', 'btn-last-b'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = isLast;
+          });
+
           renderCatalogTable(catalogData);
         }
       } catch (err) {
@@ -411,27 +517,41 @@
     function renderCatalogTable(list) {
       const tbody = document.getElementById('catalog-tbody');
       if (!list || list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-10 text-center text-slate-500 font-mono">No smart contracts found matching current filter.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="py-12 text-center text-slate-500 font-mono">No smart contracts found matching your search or filter.</td></tr>`;
         return;
       }
 
-      tbody.innerHTML = list.map((p, idx) => `
+      tbody.innerHTML = list.map((p) => {
+        const typeBadge = p.isCommercial 
+          ? `<span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">🟢 Jupiter Verified</span>`
+          : `<span class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 text-[10px] font-mono">⚙️ Raw On-Chain</span>`;
+
+        const nameDisplay = p.isCommercial
+          ? `<span class="font-bold text-white flex items-center gap-1.5"><span class="text-emerald-400">⚡</span><span>${p.name}</span></span>`
+          : `<span class="text-slate-300 font-mono flex items-center gap-1.5"><span class="text-slate-500">📄</span><span>${p.name}</span></span>`;
+
+        return `
         <tr class="hover:bg-slate-900/60 transition-colors">
-          <td class="py-3 px-3 text-center text-slate-500">${idx + 1}</td>
-          <td class="py-3 px-4 font-bold text-white flex items-center gap-2">
-            <span>⚡</span>
-            <span>${p.name}</span>
+          <td class="py-3 px-3 text-center text-slate-500 font-mono text-[11px]">${p.index.toLocaleString()}</td>
+          <td class="py-3 px-4">
+            ${nameDisplay}
+          </td>
+          <td class="py-3 px-3 text-center">
+            ${typeBadge}
           </td>
           <td class="py-3 px-4 text-slate-300">
             <span class="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800 text-[10px]">${p.category}</span>
           </td>
-          <td class="py-3 px-4 text-cyan-300 select-all font-bold text-[11px]">
-            ${p.programId}
+          <td class="py-3 px-4">
+            <div class="flex items-center gap-1.5">
+              <span class="text-cyan-300 select-all font-mono font-bold text-[11px]">${p.programId}</span>
+              <button onclick="navigator.clipboard.writeText('${p.programId}')" class="text-slate-500 hover:text-cyan-300 text-[10px]" title="Copy Address">📋</button>
+            </div>
           </td>
           <td class="py-3 px-3 text-center">
             ${p.hasAnchorIdl 
               ? `<span class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold">Anchor IDL</span>` 
-              : `<span class="text-slate-600 text-[10px]">—</span>`}
+              : `<span class="text-slate-600 text-[10px]" title="PDA: ${p.idlPda || ''}">PDA Derived</span>`}
           </td>
           <td class="py-3 px-3 text-center">
             <a href="${p.solscanUrl}" target="_blank" class="text-cyan-400 hover:underline text-[11px]">Solscan ↗</a>
@@ -442,23 +562,71 @@
             </button>
           </td>
         </tr>
-      `).join('');
+      `}).join('');
     }
 
     function setCatalogFilter(f) {
       activeFilter = f;
-      document.getElementById('filter-all').className = f === 'all' 
-        ? 'px-3 py-1 rounded-lg border bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-bold transition-all' 
-        : 'px-3 py-1 rounded-lg border bg-slate-900 text-slate-400 border-slate-800 hover:text-white transition-all';
-      document.getElementById('filter-anchor').className = f === 'anchor' 
-        ? 'px-3 py-1 rounded-lg border bg-purple-500/20 text-purple-300 border-purple-500/40 font-bold transition-all' 
-        : 'px-3 py-1 rounded-lg border bg-slate-900 text-slate-400 border-slate-800 hover:text-white transition-all';
+      currentPage = 1;
+
+      const filters = ['all', 'jupiter', 'raw', 'anchor'];
+      filters.forEach(filterId => {
+        const btn = document.getElementById(`filter-${filterId}`);
+        if (!btn) return;
+        if (filterId === f) {
+          btn.className = 'px-3 py-1.5 rounded-lg border bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-bold transition-all flex items-center gap-1.5';
+        } else {
+          btn.className = 'px-3 py-1.5 rounded-lg border bg-slate-900 text-slate-400 border-slate-800 hover:text-white transition-all flex items-center gap-1.5';
+        }
+      });
+
       loadCatalog();
     }
 
     function handleCatalogSearch(val) {
-      searchQuery = val || '';
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        searchQuery = (val || '').trim();
+        currentPage = 1;
+        loadCatalog();
+      }, 300);
+    }
+
+    function changeLimit(newLimit) {
+      pageSize = parseInt(newLimit, 10) || 50;
+      currentPage = 1;
       loadCatalog();
+    }
+
+    function goToPage(page) {
+      const p = parseInt(page, 10);
+      if (isNaN(p) || p < 1 || p > totalPages) return;
+      currentPage = p;
+      loadCatalog();
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        loadCatalog();
+      }
+    }
+
+    function nextPage() {
+      if (currentPage < totalPages) {
+        currentPage++;
+        loadCatalog();
+      }
+    }
+
+    function jumpToPage(val) {
+      const p = parseInt(val, 10);
+      if (!isNaN(p) && p >= 1 && p <= totalPages) {
+        currentPage = p;
+        loadCatalog();
+      } else {
+        document.getElementById('input-page').value = currentPage;
+      }
     }
 
     function inspectFromCatalog(progId) {

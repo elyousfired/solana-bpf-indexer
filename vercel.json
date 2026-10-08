@@ -3,7 +3,7 @@
   "regions": ["fra1"],
   "functions": {
     "src/server.js": {
-      "includeFiles": "public/**"
+      "includeFiles": "cache/**,public/**"
     }
   }
 }
