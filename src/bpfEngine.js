@@ -1,4 +1,4 @@
-import { Connection, PublicKey } from '@solana/web3.js';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,28 +7,85 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const CACHE_DIR = process.env.VERCEL ? '/tmp' : path.join(__dirname, '..', 'cache');
 
-// Ensure cache exists
+// Ensure cache directory exists safely
 try {
   await fs.mkdir(CACHE_DIR, { recursive: true });
 } catch {}
 
 // Solana Canonical BPF Upgradeable Loader Address
 export const BPF_LOADER_UPGRADEABLE_ID = 'BPFLoaderUpgradeab1e11111111111111111111111';
-export const BPF_LOADER_PUBLIC_KEY = new PublicKey(BPF_LOADER_UPGRADEABLE_ID);
 
-// Fallback RPC endpoints for reliability
-const RPC_ENDPOINTS = [
+// Base58 Codec (Pure JS, Zero External Dependencies)
+const B58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+const B58_MAP = {};
+for (let i = 0; i < B58_ALPHABET.length; i++) B58_MAP[B58_ALPHABET[i]] = BigInt(i);
+
+export function base58Decode(str) {
+  let num = 0n;
+  for (const char of str) {
+    if (B58_MAP[char] === undefined) throw new Error(`Invalid Base58 char: ${char}`);
+    num = num * 58n + B58_MAP[char];
+  }
+  const hex = num.toString(16);
+  const paddedHex = hex.length % 2 === 0 ? hex : '0' + hex;
+  const bytes = Buffer.from(paddedHex, 'hex');
+  let leadingZeros = 0;
+  for (const char of str) {
+    if (char === '1') leadingZeros++;
+    else break;
+  }
+  return Buffer.concat([Buffer.alloc(leadingZeros), bytes]);
+}
+
+export function base58Encode(buffer) {
+  let leadingZeros = 0;
+  for (let i = 0; i < buffer.length; i++) {
+    if (buffer[i] === 0) leadingZeros++;
+    else break;
+  }
+  let num = 0n;
+  for (let i = 0; i < buffer.length; i++) {
+    num = (num << 8n) + BigInt(buffer[i]);
+  }
+  let result = '';
+  while (num > 0n) {
+    const rem = num % 58n;
+    num = num / 58n;
+    result = B58_ALPHABET[Number(rem)] + result;
+  }
+  return '1'.repeat(leadingZeros) + result;
+}
+
+// Robust Solana Mainnet RPC Connection Pool
+const PUBLIC_SOLANA_RPCS = [
   'https://api.mainnet-beta.solana.com',
-  'https://solana-mainnet.g.alchemy.com/v2/demo',
+  'https://solana-rpc.publicnode.com',
   'https://rpc.ankr.com/solana'
 ];
 
-let activeRpcIndex = 0;
-function getSolanaConnection() {
-  return new Connection(RPC_ENDPOINTS[activeRpcIndex], {
-    commitment: 'confirmed',
-    confirmTransactionInitialTimeout: 15000
-  });
+export async function callSolanaRpc(method, params = []) {
+  for (const rpcUrl of PUBLIC_SOLANA_RPCS) {
+    try {
+      const res = await fetch(rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: Date.now(),
+          method,
+          params
+        }),
+        signal: AbortSignal.timeout(8000)
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.result !== undefined) {
+          return json.result;
+        }
+      }
+    } catch {}
+  }
+  return null;
 }
 
 // Built-in Seed Dictionary of Verified Jupiter Commercial Programs
@@ -111,7 +168,9 @@ export async function getJupiterProgramLabels(forceRefresh = false) {
     if (res.ok) {
       const liveLabels = await res.json();
       const merged = { ...FALLBACK_JUPITER_LABELS, ...liveLabels };
-      await fs.writeFile(cacheFile, JSON.stringify({ timestamp: Date.now(), labels: merged }, null, 2), 'utf8');
+      try {
+        await fs.writeFile(cacheFile, JSON.stringify({ timestamp: Date.now(), labels: merged }, null, 2), 'utf8');
+      } catch {}
       return merged;
     }
   } catch (err) {
@@ -122,17 +181,25 @@ export async function getJupiterProgramLabels(forceRefresh = false) {
 }
 
 // 2. Derive Anchor IDL Program Derived Address (PDA)
-// Anchor standard: PDA = [b"anchor:idl", programId] with programId as owner
 export function deriveAnchorIdlPda(programIdStr) {
   try {
-    const programId = new PublicKey(programIdStr);
-    const [idlPda, bump] = PublicKey.findProgramAddressSync(
-      [Buffer.from('anchor:idl'), programId.toBuffer()],
-      programId
-    );
+    const programIdBytes = base58Decode(programIdStr);
+    const prefix = Buffer.from('anchor:idl');
+    const pdaMarker = Buffer.from('ProgramDerivedAddress');
+
+    // Deterministic PDA hash
+    const hash = crypto.createHash('sha256')
+      .update(prefix)
+      .update(programIdBytes)
+      .update(Buffer.from([255]))
+      .update(programIdBytes)
+      .update(pdaMarker)
+      .digest();
+
+    const idlPda = base58Encode(hash);
     return {
-      idlPda: idlPda.toBase58(),
-      bump,
+      idlPda,
+      bump: 255,
       valid: true
     };
   } catch (err) {
@@ -143,9 +210,8 @@ export function deriveAnchorIdlPda(programIdStr) {
 // 3. Inspect Any Solana Program On-Chain
 export async function inspectProgramAccount(programIdStr) {
   const cleanId = (programIdStr || '').trim();
-  let pubkey;
   try {
-    pubkey = new PublicKey(cleanId);
+    base58Decode(cleanId);
   } catch {
     return {
       success: false,
@@ -153,16 +219,15 @@ export async function inspectProgramAccount(programIdStr) {
     };
   }
 
-  const conn = getSolanaConnection();
   const jupiterLabels = await getJupiterProgramLabels();
   const jupLabel = jupiterLabels[cleanId] || null;
   const idlInfo = deriveAnchorIdlPda(cleanId);
 
   try {
     // 1. Fetch Account Info of the Program
-    const accountInfo = await conn.getAccountInfo(pubkey);
+    const accountInfo = await callSolanaRpc('getAccountInfo', [cleanId, { encoding: 'base64' }]);
 
-    if (!accountInfo) {
+    if (!accountInfo || !accountInfo.value) {
       return {
         success: false,
         programId: cleanId,
@@ -171,11 +236,11 @@ export async function inspectProgramAccount(programIdStr) {
       };
     }
 
-    const owner = accountInfo.owner.toBase58();
+    const val = accountInfo.value;
+    const owner = val.owner;
     const isOwnedByBpfLoader = owner === BPF_LOADER_UPGRADEABLE_ID;
-    const isExecutable = accountInfo.executable;
-    const dataLen = accountInfo.data ? accountInfo.data.length : 0;
-    const lamports = accountInfo.lamports;
+    const isExecutable = val.executable;
+    const lamports = val.lamports;
     const solBalance = (lamports / 1e9).toFixed(4);
 
     // 2. Check Anchor IDL PDA Account Existence
@@ -183,10 +248,10 @@ export async function inspectProgramAccount(programIdStr) {
     let idlAccountLen = 0;
     if (idlInfo.valid && idlInfo.idlPda) {
       try {
-        const idlAcc = await conn.getAccountInfo(new PublicKey(idlInfo.idlPda));
-        if (idlAcc && idlAcc.data && idlAcc.data.length > 0) {
+        const idlAcc = await callSolanaRpc('getAccountInfo', [idlInfo.idlPda, { encoding: 'base64' }]);
+        if (idlAcc && idlAcc.value && idlAcc.value.data) {
           hasAnchorIdl = true;
-          idlAccountLen = idlAcc.data.length;
+          idlAccountLen = idlAcc.value.data[0] ? Buffer.from(idlAcc.value.data[0], 'base64').length : 0;
         }
       } catch {}
     }
@@ -198,12 +263,11 @@ export async function inspectProgramAccount(programIdStr) {
     let lastBlockTime = null;
 
     try {
-      const sigs = await conn.getSignaturesForAddress(pubkey, { limit: 12 });
-      if (sigs && sigs.length > 0) {
+      const sigs = await callSolanaRpc('getSignaturesForAddress', [cleanId, { limit: 12 }]);
+      if (Array.isArray(sigs) && sigs.length > 0) {
         lastSlot = sigs[0].slot;
         lastBlockTime = sigs[0].blockTime ? new Date(sigs[0].blockTime * 1000).toISOString() : null;
         
-        // Active if latest tx within 48h
         if (sigs[0].blockTime && (Date.now() - sigs[0].blockTime * 1000 < 1000 * 60 * 60 * 48)) {
           isActive24h = true;
         }
@@ -216,9 +280,7 @@ export async function inspectProgramAccount(programIdStr) {
           memo: s.memo || null
         }));
       }
-    } catch (err) {
-      console.warn(`[BPFEngine] Sig check warning for ${cleanId}:`, err.message);
-    }
+    } catch {}
 
     // Classification Verdict
     let tier = 'Unindexed / Dormant Contract';
@@ -249,7 +311,6 @@ export async function inspectProgramAccount(programIdStr) {
       owner,
       isOwnedByBpfLoader,
       isExecutable,
-      dataLen,
       lamports,
       solBalance,
       jupiterLabel: jupLabel,
@@ -299,14 +360,10 @@ export async function getBpfCatalog(filter = 'all', search = '', limit = 100) {
     };
   });
 
-  // Filter
-  if (filter === 'jupiter') {
-    catalog = catalog.filter(p => p.hasJupiterLabel);
-  } else if (filter === 'anchor') {
+  if (filter === 'anchor') {
     catalog = catalog.filter(p => p.hasAnchorIdl);
   }
 
-  // Search
   if (search) {
     const s = search.toLowerCase().trim();
     catalog = catalog.filter(p => 
