@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solana BPF Loader Universal Indexer & Contract Radar</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #070c14; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    .glow-cyan { box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.25); }
+    .glow-solana { box-shadow: 0 0 25px -5px rgba(20, 241, 149, 0.25); }
+  </style>
+</head>
+<body class="bg-[#050911] text-slate-100 min-h-screen antialiased flex flex-col selection:bg-cyan-500/30 selection:text-cyan-300">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800/80 bg-[#080d1a]/90 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#06b6d4] to-[#14F195] p-0.5 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+          <div class="w-full h-full bg-[#080d1a] rounded-[10px] flex items-center justify-center font-bold text-lg text-cyan-300">
+            ⚡
+          </div>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-black tracking-tight text-white flex items-center gap-1.5">
+              <span>Solana BPF Loader Indexer</span>
+            </h1>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+              L-KUNNACH L-KBIR
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Single Source of Truth for all 75,500+ Smart Contracts deployed on Solana Mainnet Beta</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800 font-mono text-xs overflow-x-auto">
+        <button id="tab-catalog" onclick="switchView('catalog')" class="px-3.5 py-1.5 rounded-lg font-bold transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm flex items-center gap-1.5 shrink-0">
+          <span>📋</span>
+          <span>1. Verified Catalog</span>
+        </button>
+        <button id="tab-inspector" onclick="switchView('inspector')" class="px-3.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1.5 shrink-0">
+          <span>🔍</span>
+          <span>2. Live On-Chain Inspector</span>
+        </button>
+        <button id="tab-blueprint" onclick="switchView('blueprint')" class="px-3.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1.5 shrink-0">
+          <span>🧬</span>
+          <span>3. BPF Blueprint (Technical Guide)</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 space-y-6 w-full">
+
+    <!-- Top Hero KPI Metrics -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 font-mono">
+      <div class="bg-[#0b1322] border border-cyan-500/30 rounded-2xl p-4 shadow-lg shadow-cyan-950/20">
+        <div class="text-[11px] text-slate-400 uppercase font-semibold">Total Deployed Programs</div>
+        <div id="kpi-total-bpf" class="text-2xl font-black text-white mt-1">75,510+</div>
+        <div class="text-[11px] text-cyan-400 mt-1 flex items-center gap-1">
+          <span>●</span>
+          <span>Indexed via BPFLoaderUpgradeable</span>
+        </div>
+      </div>
+
+      <div class="bg-[#0b1322] border border-emerald-500/30 rounded-2xl p-4 shadow-lg shadow-emerald-950/20">
+        <div class="text-[11px] text-slate-400 uppercase font-semibold">Commercial Protocols</div>
+        <div id="kpi-commercial-count" class="text-2xl font-black text-emerald-300 mt-1">120+ Active</div>
+        <div class="text-[11px] text-emerald-400 mt-1">Cross-Referenced with Jupiter</div>
+      </div>
+
+      <div class="bg-[#0b1322] border border-purple-500/30 rounded-2xl p-4 shadow-lg shadow-purple-950/20">
+        <div class="text-[11px] text-slate-400 uppercase font-semibold">Anchor IDL Radar</div>
+        <div class="text-2xl font-black text-purple-300 mt-1">PDA Verified</div>
+        <div class="text-[11px] text-slate-400 mt-1">[b"anchor:idl", programId]</div>
+      </div>
+
+      <div class="bg-[#0b1322] border border-amber-500/30 rounded-2xl p-4 shadow-lg shadow-amber-950/20">
+        <div class="text-[11px] text-slate-400 uppercase font-semibold">Program Filter Sieve</div>
+        <div class="text-2xl font-black text-amber-300 mt-1">36 Bytes Size</div>
+        <div class="text-[11px] text-slate-400 mt-1">Filters real Programs from Data accounts</div>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- VIEW 1: VERIFIED BPF CATALOG                                   -->
+    <!-- ============================================================== -->
+    <section id="view-catalog" class="space-y-5">
+      <div class="bg-[#080d1a] border border-slate-800 rounded-2xl p-5 space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+              <span class="text-xs font-mono font-bold uppercase text-cyan-400">BPF Upgradeable Registry</span>
+            </div>
+            <h2 class="text-lg font-bold text-white font-mono flex items-center gap-2 mt-1">
+              <span>📋 Verified Commercial Smart Contracts Catalog</span>
+              <span id="catalog-count-badge" class="px-2.5 py-0.5 rounded-full text-xs bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">Loading...</span>
+            </h2>
+            <p class="text-xs text-slate-400 mt-1">
+              Active protocols extracted from the 75,510+ BPF programs, filtered through Jupiter commercial liquidity mappings and Anchor IDL standards.
+            </p>
+          </div>
+
+          <!-- Search Input -->
+          <div class="relative w-full md:w-80">
+            <input 
+              id="catalog-search"
+              type="text" 
+              oninput="handleCatalogSearch(this.value)" 
+              placeholder="Search by Protocol Name or Program ID..." 
+              class="w-full bg-slate-950/90 border border-slate-800 focus:border-cyan-400 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 outline-none font-mono"
+            />
+          </div>
+        </div>
+
+        <!-- Filter Pills -->
+        <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
+          <span class="text-slate-500">Filter Sieve:</span>
+          <button id="filter-all" onclick="setCatalogFilter('all')" class="px-3 py-1 rounded-lg border bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-bold transition-all">All Commercial (120+)</button>
+          <button id="filter-anchor" onclick="setCatalogFilter('anchor')" class="px-3 py-1 rounded-lg border bg-slate-900 text-slate-400 border-slate-800 hover:text-white transition-all">Anchor IDL Verified</button>
+        </div>
+
+        <!-- Catalog Table -->
+        <div class="overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-950/60 font-mono text-xs">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 bg-slate-900/80 text-[11px] text-slate-400 uppercase">
+                <th class="py-3 px-3 text-center w-12">#</th>
+                <th class="py-3 px-4">Protocol Name</th>
+                <th class="py-3 px-4">Category</th>
+                <th class="py-3 px-4">Solana Program ID</th>
+                <th class="py-3 px-3 text-center">Anchor IDL</th>
+                <th class="py-3 px-3 text-center">Solscan</th>
+                <th class="py-3 px-4 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="catalog-tbody" class="divide-y divide-slate-800/60">
+              <!-- Injected via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VIEW 2: DEEP ON-CHAIN PROGRAM INSPECTOR                        -->
+    <!-- ============================================================== -->
+    <section id="view-inspector" class="hidden space-y-5">
+      <div class="bg-[#080d1a] border border-slate-800 rounded-2xl p-5 sm:p-6 space-y-6">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-xs font-mono font-bold uppercase text-emerald-400">Live Solana RPC Inspector</span>
+          </div>
+          <h2 class="text-xl font-bold text-white mt-1">Deep BPF Upgradeable Program Inspector</h2>
+          <p class="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
+            Paste any Solana Program address to verify its ownership by BPFLoaderUpgradeable, calculate its Anchor IDL PDA address, and check recent real-time transactions.
+          </p>
+        </div>
+
+        <!-- Input Box -->
+        <div class="space-y-2">
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <input 
+              id="inspector-input" 
+              type="text" 
+              value="675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"
+              placeholder="Enter Solana Program ID (e.g. 675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8)..." 
+              class="flex-1 bg-slate-950 border border-slate-800 focus:border-cyan-400 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 outline-none font-mono"
+            />
+            <button 
+              onclick="triggerInspect()" 
+              id="btn-inspect" 
+              class="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold font-mono text-xs transition-all shadow-md shadow-cyan-500/20 flex items-center justify-center gap-1.5"
+            >
+              <span id="inspect-icon">⚡</span>
+              <span>Inspect On-Chain</span>
+            </button>
+          </div>
+
+          <!-- Quick Presets -->
+          <div class="flex flex-wrap items-center gap-2 text-xs font-mono pt-1">
+            <span class="text-slate-500">Quick Anchors:</span>
+            <button onclick="setInspectorPreset('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-cyan-400 border border-slate-800">Raydium AMM</button>
+            <button onclick="setInspectorPreset('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-pink-400 border border-slate-800">Pump.fun</button>
+            <button onclick="setInspectorPreset('oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-800">ORE Protocol</button>
+            <button onclick="setInspectorPreset('5ocnV1qiCgaQR8Jb8xWnVbApfaygJ8tNoZfgPwsgx9kx')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-purple-400 border border-slate-800">Sanctum Infinity</button>
+            <button onclick="setInspectorPreset('whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-slate-800">Orca Whirlpool</button>
+            <button onclick="setInspectorPreset('KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD')" class="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-blue-400 border border-slate-800">Kamino Lend</button>
+          </div>
+        </div>
+
+        <!-- Inspector Results Panel -->
+        <div id="inspector-result-panel" class="space-y-4">
+          <div class="p-5 rounded-2xl border border-slate-800 bg-slate-950/80 font-mono text-xs space-y-4">
+            
+            <!-- Verdict Banner -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+              <div>
+                <span class="text-slate-500 text-[11px] uppercase">Classification Sieve Verdict:</span>
+                <div id="res-verdict" class="text-base font-black text-emerald-400 mt-0.5 flex items-center gap-1.5">
+                  <span>🟢</span>
+                  <span>Tier 1: Commercial Protocol (Jupiter Verified)</span>
+                </div>
+              </div>
+              <div id="res-jup-badge" class="px-3 py-1 rounded-xl bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-xs font-bold shrink-0">
+                Jupiter Label: Raydium V4 AMM
+              </div>
+            </div>
+
+            <!-- Program Technical Attributes Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-[11px]">
+              <div class="p-3 rounded-xl bg-black/40 border border-slate-800">
+                <div class="text-slate-500 uppercase text-[10px]">Owner Program</div>
+                <div id="res-owner" class="text-cyan-300 font-bold mt-1 truncate" title="BPFLoaderUpgradeab1e11111111111111111111111">
+                  BPFLoaderUpgradeab1e...
+                </div>
+                <div class="text-[9px] text-emerald-400 mt-0.5">✅ Verified BPF Master</div>
+              </div>
+
+              <div class="p-3 rounded-xl bg-black/40 border border-slate-800">
+                <div class="text-slate-500 uppercase text-[10px]">Anchor IDL PDA Account</div>
+                <div id="res-idl-status" class="text-purple-300 font-bold mt-1">Checking...</div>
+                <div id="res-idl-pda" class="text-[9px] text-slate-500 truncate mt-0.5 select-all">Derived from [b"anchor:idl"]</div>
+              </div>
+
+              <div class="p-3 rounded-xl bg-black/40 border border-slate-800">
+                <div class="text-slate-500 uppercase text-[10px]">On-Chain Activity (48h)</div>
+                <div id="res-activity" class="text-emerald-300 font-bold mt-1">Live Active</div>
+                <div id="res-last-slot" class="text-[9px] text-slate-400 mt-0.5">Slot: Loading...</div>
+              </div>
+
+              <div class="p-3 rounded-xl bg-black/40 border border-slate-800">
+                <div class="text-slate-500 uppercase text-[10px]">Rent Exemption Balance</div>
+                <div id="res-balance" class="text-amber-300 font-bold mt-1">Loading SOL...</div>
+                <div class="text-[9px] text-slate-500 mt-0.5">Executable Program Account</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Recent Transactions -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between font-mono text-xs">
+              <span class="font-bold text-white uppercase text-[11px]">Recent Confirmed Transactions Stream</span>
+              <span id="res-tx-count" class="text-slate-400">12 Verified Calls</span>
+            </div>
+
+            <div class="overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-950/60 font-mono text-xs">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-800 bg-slate-900/80 text-[11px] text-slate-400 uppercase">
+                    <th class="py-2.5 px-3">Transaction Signature</th>
+                    <th class="py-2.5 px-3">Slot Height</th>
+                    <th class="py-2.5 px-3">Timestamp</th>
+                    <th class="py-2.5 px-3 text-center">Status</th>
+                    <th class="py-2.5 px-3 text-right">Solscan</th>
+                  </tr>
+                </thead>
+                <tbody id="res-tx-tbody" class="divide-y divide-slate-800/60">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VIEW 3: BPF TECHNICAL BLUEPRINT & GUIDE                        -->
+    <!-- ============================================================== -->
+    <section id="view-blueprint" class="hidden space-y-6">
+      
+      <!-- Banner -->
+      <div class="p-6 rounded-3xl bg-gradient-to-br from-[#0c1a2e] via-[#07111e] to-[#040810] border border-cyan-500/40 space-y-3 font-mono">
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-0.5 rounded-full font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs">
+            ARCHITECTURAL WHITEPAPER
+          </span>
+          <span class="text-xs text-slate-400">Solana Core Runtime Standard</span>
+        </div>
+        <h2 class="text-2xl font-black text-white">BPF Upgradeable Loader: L-Kunnach L-Kbir d Solana</h2>
+        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-4xl">
+          In Solana's architecture, smart contracts (Programs) cannot be deployed in thin air. Every deployed smart contract is an account owned strictly by the universal BPF Upgradeable Loader program.
+        </p>
+      </div>
+
+      <!-- 3 Pillar Blueprint Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
+        
+        <!-- Pillar 1 -->
+        <div class="p-5 rounded-2xl bg-[#080d1a] border border-slate-800 space-y-3">
+          <div class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center text-sm border border-cyan-500/30">
+            1
+          </div>
+          <h3 class="text-base font-bold text-white">The Sovereign Owner</h3>
+          <p class="text-slate-400 leading-relaxed text-[11px]">
+            Whether it is Raydium, Orca, Kamino, or a student test script, the owner of the program account on-chain is mandatory:
+          </p>
+          <div class="p-2.5 rounded-lg bg-black/60 border border-slate-800 text-cyan-300 select-all break-all text-[10px]">
+            BPFLoaderUpgradeab1e11111111111111111111111
+          </div>
+          <p class="text-slate-500 text-[10px]">
+            This program controls the upgrade authority, executable byte buffer, and instruction execution dispatch.
+          </p>
+        </div>
+
+        <!-- Pillar 2 -->
+        <div class="p-5 rounded-2xl bg-[#080d1a] border border-slate-800 space-y-3">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-sm border border-emerald-500/30">
+            2
+          </div>
+          <h3 class="text-base font-bold text-white">Single RPC Request Query</h3>
+          <p class="text-slate-400 leading-relaxed text-[11px]">
+            By sending a single <code class="text-emerald-300">getProgramAccounts</code> query with <code class="text-emerald-300">{ dataSize: 36 }</code>, Solana returns every Program account registered:
+          </p>
+          <div class="p-2.5 rounded-lg bg-black/60 border border-slate-800 text-emerald-300 text-[10px]">
+            filters: [{ dataSize: 36 }]
+          </div>
+          <p class="text-slate-500 text-[10px]">
+            In Solana BPF, Program accounts hold exactly 36 bytes (4 bytes enum state + 32 bytes ProgramData pubkey).
+          </p>
+        </div>
+
+        <!-- Pillar 3 -->
+        <div class="p-5 rounded-2xl bg-[#080d1a] border border-slate-800 space-y-3">
+          <div class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 font-bold flex items-center justify-center text-sm border border-purple-500/30">
+            3
+          </div>
+          <h3 class="text-base font-bold text-white">The 3-Tier Sieve Filter</h3>
+          <p class="text-slate-400 leading-relaxed text-[11px]">
+            Out of 75,510+ contracts, 90%+ are abandoned hackathons or test code. The sieve separates real protocols:
+          </p>
+          <ul class="space-y-1.5 text-slate-300 text-[10px]">
+            <li>🟢 <strong class="text-white">Jupiter Labels:</strong> Real commercial routing &amp; liquidity.</li>
+            <li>🔷 <strong class="text-white">Anchor IDL PDA:</strong> <code class="text-purple-300">[b"anchor:idl", programId]</code> validates professional schema.</li>
+            <li>⚡ <strong class="text-white">24H Traffic:</strong> Active signatures on-chain.</li>
+          </ul>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-[#080d1a] py-6 font-mono text-xs text-slate-500 text-center">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div>Solana BPF Loader Universal Smart Contract Indexer</div>
+      <div class="flex items-center gap-4 text-slate-400">
+        <span>75,510+ Contracts Indexed</span>
+        <span>Anchor IDL Standard</span>
+        <span>Jupiter Commercial Mappings</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- App Script -->
+  <script>
+    let catalogData = [];
+    let activeFilter = 'all';
+    let searchQuery = '';
+
+    async function initApp() {
+      await loadStats();
+      await loadCatalog();
+      triggerInspect();
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/bpf/stats');
+        const json = await res.json();
+        if (json.success) {
+          document.getElementById('kpi-total-bpf').textContent = Number(json.totalHistoricalPrograms).toLocaleString() + '+';
+          document.getElementById('kpi-commercial-count').textContent = `${json.jupiterVerifiedCommercialProtocols} Active`;
+        }
+      } catch (err) {
+        console.error('Stats error:', err);
+      }
+    }
+
+    async function loadCatalog() {
+      try {
+        const res = await fetch(`/api/bpf/catalog?filter=${activeFilter}&search=${encodeURIComponent(searchQuery)}`);
+        const json = await res.json();
+        if (json.success) {
+          catalogData = json.programs;
+          document.getElementById('catalog-count-badge').textContent = `${json.total} Protocols`;
+          renderCatalogTable(catalogData);
+        }
+      } catch (err) {
+        console.error('Catalog error:', err);
+      }
+    }
+
+    function renderCatalogTable(list) {
+      const tbody = document.getElementById('catalog-tbody');
+      if (!list || list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-10 text-center text-slate-500 font-mono">No smart contracts found matching current filter.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map((p, idx) => `
+        <tr class="hover:bg-slate-900/60 transition-colors">
+          <td class="py-3 px-3 text-center text-slate-500">${idx + 1}</td>
+          <td class="py-3 px-4 font-bold text-white flex items-center gap-2">
+            <span>⚡</span>
+            <span>${p.name}</span>
+          </td>
+          <td class="py-3 px-4 text-slate-300">
+            <span class="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800 text-[10px]">${p.category}</span>
+          </td>
+          <td class="py-3 px-4 text-cyan-300 select-all font-bold text-[11px]">
+            ${p.programId}
+          </td>
+          <td class="py-3 px-3 text-center">
+            ${p.hasAnchorIdl 
+              ? `<span class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold">Anchor IDL</span>` 
+              : `<span class="text-slate-600 text-[10px]">—</span>`}
+          </td>
+          <td class="py-3 px-3 text-center">
+            <a href="${p.solscanUrl}" target="_blank" class="text-cyan-400 hover:underline text-[11px]">Solscan ↗</a>
+          </td>
+          <td class="py-3 px-4 text-center">
+            <button onclick="inspectFromCatalog('${p.programId}')" class="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 font-bold text-[11px] transition-all">
+              Inspect ⚡
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function setCatalogFilter(f) {
+      activeFilter = f;
+      document.getElementById('filter-all').className = f === 'all' 
+        ? 'px-3 py-1 rounded-lg border bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-bold transition-all' 
+        : 'px-3 py-1 rounded-lg border bg-slate-900 text-slate-400 border-slate-800 hover:text-white transition-all';
+      document.getElementById('filter-anchor').className = f === 'anchor' 
+        ? 'px-3 py-1 rounded-lg border bg-purple-500/20 text-purple-300 border-purple-500/40 font-bold transition-all' 
+        : 'px-3 py-1 rounded-lg border bg-slate-900 text-slate-400 border-slate-800 hover:text-white transition-all';
+      loadCatalog();
+    }
+
+    function handleCatalogSearch(val) {
+      searchQuery = val || '';
+      loadCatalog();
+    }
+
+    function inspectFromCatalog(progId) {
+      switchView('inspector');
+      setInspectorPreset(progId);
+    }
+
+    // Inspector
+    function setInspectorPreset(progId) {
+      document.getElementById('inspector-input').value = progId;
+      triggerInspect();
+    }
+
+    async function triggerInspect() {
+      const input = document.getElementById('inspector-input');
+      const btnIcon = document.getElementById('inspect-icon');
+      const progId = (input.value || '').trim();
+      if (!progId) return;
+
+      if (btnIcon) btnIcon.textContent = '⏳';
+
+      try {
+        const res = await fetch(`/api/bpf/inspect?programId=${encodeURIComponent(progId)}`);
+        const json = await res.json();
+        if (json.success) {
+          const v = json.verdict;
+          document.getElementById('res-verdict').innerHTML = `<span>${v.tierIcon}</span><span>${v.tier}</span>`;
+          document.getElementById('res-jup-badge').textContent = json.jupiterLabel ? `Jupiter Label: ${json.jupiterLabel}` : 'Unlabeled Commercial';
+          document.getElementById('res-owner').textContent = json.owner.slice(0, 16) + '...';
+          document.getElementById('res-owner').title = json.owner;
+
+          document.getElementById('res-idl-status').textContent = json.hasAnchorIdl ? '✅ On-Chain IDL Found' : '⚠️ No IDL PDA Registered';
+          document.getElementById('res-idl-status').className = json.hasAnchorIdl ? 'text-purple-300 font-bold mt-1' : 'text-slate-400 font-bold mt-1';
+          document.getElementById('res-idl-pda').textContent = json.idlPda ? `PDA: ${json.idlPda.slice(0, 12)}...` : 'N/A';
+
+          document.getElementById('res-activity').textContent = json.isActive24h ? '⚡ Recent Traffic (48h)' : '⏸️ Inactive / Low Traffic';
+          document.getElementById('res-activity').className = json.isActive24h ? 'text-emerald-300 font-bold mt-1' : 'text-amber-400 font-bold mt-1';
+          document.getElementById('res-last-slot').textContent = json.lastSlot ? `Slot #${json.lastSlot.toLocaleString()}` : 'No confirmed slots';
+
+          document.getElementById('res-balance').textContent = `${json.solBalance} SOL`;
+
+          // Transactions
+          document.getElementById('res-tx-count').textContent = `${json.recentSignaturesCount} Verified Calls`;
+          const tbody = document.getElementById('res-tx-tbody');
+          if (json.recentSignatures && json.recentSignatures.length > 0) {
+            tbody.innerHTML = json.recentSignatures.map(tx => `
+              <tr class="hover:bg-slate-900/60 transition-colors">
+                <td class="py-2.5 px-3 font-mono text-[11px] text-cyan-300 select-all break-all">
+                  ${tx.signature.slice(0, 16)}...${tx.signature.slice(-16)}
+                </td>
+                <td class="py-2.5 px-3 font-mono text-[11px] text-emerald-300">#${tx.slot}</td>
+                <td class="py-2.5 px-3 text-slate-400 text-[11px]">
+                  ${tx.blockTime ? new Date(tx.blockTime).toLocaleTimeString() : 'Recent'}
+                </td>
+                <td class="py-2.5 px-3 text-center">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold ${tx.status === 'Success' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}">
+                    ${tx.status}
+                  </span>
+                </td>
+                <td class="py-2.5 px-3 text-right">
+                  <a href="https://solscan.io/tx/${tx.signature}" target="_blank" class="text-cyan-400 hover:underline">
+                    Solscan ↗
+                  </a>
+                </td>
+              </tr>
+            `).join('');
+          } else {
+            tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-500 font-mono">No recent transactions confirmed on RPC for this program.</td></tr>`;
+          }
+        } else {
+          document.getElementById('res-verdict').innerHTML = `<span class="text-rose-400">❌ Error: ${json.error}</span>`;
+        }
+      } catch (err) {
+        console.error('Inspection error:', err);
+      } finally {
+        if (btnIcon) btnIcon.textContent = '⚡';
+      }
+    }
+
+    function switchView(view) {
+      ['catalog', 'inspector', 'blueprint'].forEach(v => {
+        const btn = document.getElementById(`tab-${v}`);
+        const sec = document.getElementById(`view-${v}`);
+        if (sec) {
+          if (v === view) sec.classList.remove('hidden');
+          else sec.classList.add('hidden');
+        }
+        if (btn) {
+          btn.className = v === view
+            ? 'px-3.5 py-1.5 rounded-lg font-bold transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm flex items-center gap-1.5 shrink-0'
+            : 'px-3.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1.5 shrink-0';
+        }
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
