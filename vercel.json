@@ -1,10 +1,9 @@
 {
   "version": 2,
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/src/server.js"
+  "regions": ["fra1"],
+  "functions": {
+    "src/server.js": {
+      "includeFiles": "public/**"
     }
-  ],
-  "regions": ["fra1"]
+  }
 }

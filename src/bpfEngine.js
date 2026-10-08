@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const CACHE_DIR = path.join(__dirname, '..', 'cache');
+const CACHE_DIR = process.env.VERCEL ? '/tmp' : path.join(__dirname, '..', 'cache');
 
 // Ensure cache exists
 try {
